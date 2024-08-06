@@ -1,0 +1,69 @@
+services:
+  backend-for-frontend:
+    build:
+      context: ${SERVICE_PATH:-services}/backend-for-frontend-python
+      dockerfile: Dockerfile
+    image: backend-for-frontend-python:latest
+    environment:
+      - OTEL_EXPORTER_OTLP_HEADERS=x-honeycomb-team=${HONEYCOMB_API_KEY}
+      - OTEL_SERVICE_NAME=backend-for-frontend-python
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://api.eu1.honeycomb.io
+    ports:
+      - "10115"
+    env_file: ".env"
+
+  image-picker:
+    build:
+      context: ${SERVICE_PATH:-services}/image-picker-python
+      dockerfile: Dockerfile
+    image: image-picker-python:latest
+    ports:
+      - "10116"
+    environment:
+      BUCKET_NAME: random-pictures
+
+  meminator:
+    build:
+      context: ${SERVICE_PATH:-services}/meminator-python
+      dockerfile: Dockerfile
+    image: meminator-python:latest
+    environment:
+      - OTEL_EXPORTER_OTLP_HEADERS=x-honeycomb-team=${HONEYCOMB_API_KEY}
+      - OTEL_SERVICE_NAME=meminator-python
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://api.eu1.honeycomb.io
+    ports:
+      - "10117"
+    env_file: ".env"
+
+  phrase-picker:
+    build:
+      context: ${SERVICE_PATH:-services}/phrase-picker-python
+      dockerfile: Dockerfile
+    image: phrase-picker-python:latest
+    ports:
+      - "10118"
+
+  web:
+    build:
+      context: ${SERVICE_PATH:-services}/web
+      dockerfile: Dockerfile
+      args:
+        HONEYCOMB_API_KEY: ${HONEYCOMB_API_KEY}
+        OTEL_EXPORTER_OTLP_ENDPOINT: https://api.eu1.honeycomb.io:443
+    image: web:latest
+    # volumes: # uncomment this for faster development on the frontend
+    #   - ./services/web/dist:/usr/share/nginx/html # Mount directory containing static files -- only do this for development
+    ports:
+      - "10114:10114"
+    env_file: ".env"
+    depends_on:
+      backend-for-frontend:
+        condition: service_started
+      image-picker:
+        condition: service_started
+      meminator:
+        condition: service_started
+      phrase-picker:
+        condition: service_started
